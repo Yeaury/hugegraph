@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -1326,8 +1327,14 @@ public final class HugeGraphAuthProxy implements HugeGraph {
 
         @Override
         public <V> HugeTask<V> task(Id id) {
+            return this.task(id, true);
+        }
+
+        @Override
+        public <V> HugeTask<V> task(Id id, boolean withResult) {
             return verifyTaskPermission(HugePermission.READ,
-                                        this.taskScheduler.task(id));
+                                        this.taskScheduler.task(id,
+                                                                withResult));
         }
 
         @Override
@@ -1337,17 +1344,35 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         }
 
         @Override
+        public <V> Iterator<HugeTask<V>> tasks(List<Id> ids,
+                                               boolean withResult) {
+            return verifyTaskPermission(HugePermission.READ,
+                                        this.taskScheduler.tasks(ids,
+                                                                 withResult));
+        }
+
+        @Override
         public <V> Iterator<HugeTask<V>> tasks(TaskStatus status,
                                                long limit, String page) {
             Iterator<HugeTask<V>> tasks = this.taskScheduler.tasks(status,
-                                                                   limit, page);
+                                                                   limit,
+                                                                   page);
+            return verifyTaskPermission(HugePermission.READ, tasks);
+        }
+
+        @Override
+        public <V> Iterator<HugeTask<V>> tasks(TaskStatus status,
+                                               long limit, String page,
+                                               boolean withResult) {
+            Iterator<HugeTask<V>> tasks = this.taskScheduler.tasks(
+                    status, limit, page, withResult);
             return verifyTaskPermission(HugePermission.READ, tasks);
         }
 
         @Override
         public <V> HugeTask<V> delete(Id id, boolean force) {
             verifyTaskPermission(HugePermission.DELETE,
-                                 this.taskScheduler.task(id));
+                                 this.taskScheduler.task(id, false));
             return this.taskScheduler.delete(id, force);
         }
 
@@ -1981,6 +2006,70 @@ public final class HugeGraphAuthProxy implements HugeGraph {
         @Override
         public HugeGroup findGroup(String name) {
             return this.authManager.findGroup(name);
+        }
+
+        @Override
+        public void setDefaultGraph(String graphSpace, String graph, String user) {
+            this.authManager.setDefaultGraph(graphSpace, graph, user);
+        }
+
+        @Override
+        public void unsetDefaultGraph(String graphSpace, String graph, String user) {
+            this.authManager.unsetDefaultGraph(graphSpace, graph, user);
+        }
+
+        @Override
+        public Map<String, Date> getDefaultGraph(String graphSpace, String user) {
+            return this.authManager.getDefaultGraph(graphSpace, user);
+        }
+
+        @Override
+        public Id createDefaultRole(String graphSpace, String owner, HugeDefaultRole role,
+                                    String graph) {
+            try {
+                return this.authManager.createDefaultRole(graphSpace, owner, role, graph);
+            } finally {
+                this.invalidRoleCache();
+            }
+        }
+
+        @Override
+        public Id createSpaceDefaultRole(String graphSpace, String owner, HugeDefaultRole role) {
+            try {
+                return this.authManager.createSpaceDefaultRole(graphSpace, owner, role);
+            } finally {
+                this.invalidRoleCache();
+            }
+        }
+
+        @Override
+        public boolean isDefaultRole(String graphSpace, String owner, HugeDefaultRole role) {
+            return this.authManager.isDefaultRole(graphSpace, owner, role);
+        }
+
+        @Override
+        public boolean isDefaultRole(String graphSpace, String graph, String owner,
+                                     HugeDefaultRole role) {
+            return this.authManager.isDefaultRole(graphSpace, graph, owner, role);
+        }
+
+        @Override
+        public void deleteDefaultRole(String graphSpace, String owner, HugeDefaultRole role) {
+            try {
+                this.authManager.deleteDefaultRole(graphSpace, owner, role);
+            } finally {
+                this.invalidRoleCache();
+            }
+        }
+
+        @Override
+        public void deleteDefaultRole(String graphSpace, String owner, HugeDefaultRole role,
+                                      String graph) {
+            try {
+                this.authManager.deleteDefaultRole(graphSpace, owner, role, graph);
+            } finally {
+                this.invalidRoleCache();
+            }
         }
 
         @Override
